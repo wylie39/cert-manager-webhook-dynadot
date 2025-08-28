@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dynadot-key
+type: Opaque
+data:
+  applicationSecret: <your-application-secret-base64-encoded>

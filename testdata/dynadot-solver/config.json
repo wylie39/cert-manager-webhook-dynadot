@@ -1,0 +1,6 @@
+{
+    "applicationSecretRef": {
+        "Name": "dynadot-key",
+        "Key": "applicationSecret"
+    }
+}
