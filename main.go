@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	extapi "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/apis/acme/v1alpha1"
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/cmd"
+	"github.com/cert-manager/cert-manager/pkg/issuer/acme/dns/util"
 )
 
 var GroupName = os.Getenv("GROUP_NAME")
@@ -56,7 +58,8 @@ type dynadotSolver struct {
 // be used by your provider here, you should reference a Kubernetes Secret
 // resource and fetch these credentials using a Kubernetes clientset.
 type customDNSProviderConfig struct {
-	APIKeyRef corev1.SecretKeySelector `json:"apiKeyRef"`
+	ApiKeyRef corev1.SecretKeySelector `json:"apiKeyRef"`
+	ApplicationSecretRef corev1.SecretKeySelector `json:"applicationSecretRef"`
 }
 
 // Name is used as the name for this DNS solver when referencing it on the ACME
@@ -99,17 +102,24 @@ func (c *dynadotSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 		return err
 	}
 
-	applicationSecret, err := c.secret(cfg.APIKeyRef, ch.ResourceNamespace)
+	applicationSecret, err := c.secret(cfg.ApplicationSecretRef, ch.ResourceNamespace)
 	if err != nil {
 		return err
 	}
 
-	// TODO: do something more useful with the decoded configuration
-	fmt.Printf("Decoded configuration %v", cfg)
-	fmt.Printf("key %v",applicationSecret)
+	apiKey, err := c.secret(cfg.ApiKeyRef, ch.ResourceNamespace)
+	if err != nil {
+		return err
+	}
 
-	// TODO: add code that sets a record in the DNS provider's console
-	return nil
+
+	client := NewDynadotClient(applicationSecret,apiKey)
+	
+	domain := util.UnFqdn(ch.ResolvedZone)
+	subDomain := getSubDomain(domain, ch.ResolvedFQDN)
+	target := ch.Key
+
+	return addTXTRecord(client, domain, subDomain, target)
 }
 
 // CleanUp should delete the relevant TXT record from the DNS provider console.
@@ -156,3 +166,49 @@ func loadConfig(cfgJSON *extapi.JSON) (customDNSProviderConfig, error) {
 
 	return cfg, nil
 }
+
+func getSubDomain(domain, fqdn string) string {
+	if idx := strings.Index(fqdn, "."+domain); idx != -1 {
+		return fqdn[:idx]
+	}
+
+	return util.UnFqdn(fqdn)
+}
+
+
+func addTXTRecord(c *DynadotClient, domain, subDomain, target string) error{
+	setDNSRequest := SetDNSRequest{
+		DNSMainList: []MainDNSRecord{},
+		SubList: []SubDNSRecord{
+			{
+				SubHost:      subDomain,
+				RecordType:   "txt",
+				RecordValue1: target,
+			},
+		},
+		TTL:                    300,
+		AddDNSToCurrentSetting: true,
+	}
+	
+	response, err := c.SetDNSRecords(domain, setDNSRequest)
+	if err != nil {
+		fmt.Printf("Error setting DNS records: %v\n", err)
+	}
+
+	
+	fmt.Printf("Response Code: %s\n", response.Code)
+	fmt.Printf("Response Message: %s\n", response.Message)
+	return nil
+}
+
+func GetDNSRecords(c *DynadotClient, key string, domain, subDomain, target string) error{
+	dnsRecords, err := c.GetDNSRecords(domain)
+	if err != nil {
+		fmt.Printf("Error getting DNS records: %v\n", err)
+		return nil
+	}
+	
+	fmt.Printf("Message: %s\n", dnsRecords.Message)
+	return nil
+}
+
