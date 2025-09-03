@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -91,35 +92,41 @@ func (s *dynadotSolver) secret(ref corev1.SecretKeySelector, namespace string) (
 	return string(bytes), nil
 }
 
+
+func (s *dynadotSolver) dynadotClient(ch *v1alpha1.ChallengeRequest) (*DynadotClient, error) {
+	cfg, err := loadConfig(ch.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	applicationSecret, err := s.secret(cfg.ApplicationSecretRef, ch.ResourceNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey, err := s.secret(cfg.ApiKeyRef, ch.ResourceNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewDynadotClient(applicationSecret,apiKey), nil
+}
+
 // Present is responsible for actually presenting the DNS record with the
 // DNS provider.
 // This method should tolerate being called multiple times with the same value.
 // cert-manager itself will later perform a self check to ensure that the
 // solver has correctly configured the DNS provider.
 func (c *dynadotSolver) Present(ch *v1alpha1.ChallengeRequest) error {
-	cfg, err := loadConfig(ch.Config)
+	dynadotClient, err := c.dynadotClient(ch)
 	if err != nil {
 		return err
 	}
-
-	applicationSecret, err := c.secret(cfg.ApplicationSecretRef, ch.ResourceNamespace)
-	if err != nil {
-		return err
-	}
-
-	apiKey, err := c.secret(cfg.ApiKeyRef, ch.ResourceNamespace)
-	if err != nil {
-		return err
-	}
-
-
-	client := NewDynadotClient(applicationSecret,apiKey)
-	
 	domain := util.UnFqdn(ch.ResolvedZone)
 	subDomain := getSubDomain(domain, ch.ResolvedFQDN)
 	target := ch.Key
 
-	return addTXTRecord(client, domain, subDomain, target)
+	return addTXTRecord(dynadotClient, domain, subDomain, target)
 }
 
 // CleanUp should delete the relevant TXT record from the DNS provider console.
@@ -128,8 +135,51 @@ func (c *dynadotSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 // value provided on the ChallengeRequest should be cleaned up.
 // This is in order to facilitate multiple DNS validations for the same domain
 // concurrently.
-func (c *dynadotSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
-	// TODO: add code that deletes a record from the DNS provider's console
+func (s *dynadotSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
+	dynadotClient, err := s.dynadotClient(ch)
+	if err != nil {
+		return err
+	}
+	domain := util.UnFqdn(ch.ResolvedZone)
+	//subDomain := getSubDomain(domain, ch.ResolvedFQDN)
+	//target := ch.Key
+	dnsResponse, err := dynadotClient.GetDNSRecords(domain)
+	if err != nil {
+		fmt.Printf("Error getting DNS records: %v\n", err)
+		return nil
+	}
+
+	dnsRecords := dnsResponse.Data
+	var newRecords SetDNSRequest
+	writeIndex := 0
+    
+    for readIndex := 0; readIndex < len(dnsRecords.Name_server_settings.Sub_domains); readIndex++ {
+        record := dnsRecords.Name_server_settings.Sub_domains[readIndex]
+        
+        // Check if this record should be kept (doesn't match the criteria)
+        if  record.RecordValue1 != "123d==" {
+            dnsRecords.Name_server_settings.Sub_domains[writeIndex] = record
+            writeIndex++
+        }
+    }
+    
+    // Truncate the slice to remove filtered elements
+	newRecords.DNSMainList = ConvertMainDNSRecords(dnsRecords.Name_server_settings.Main_domains)
+    newRecords.SubList = ConvertSubDNSRecords(dnsRecords.Name_server_settings.Sub_domains[:writeIndex])
+	newRecords.TTL ,err = strconv.ParseInt(dnsRecords.Name_server_settings.TTL,10,64)
+	if err != nil {
+		fmt.Printf("Error parse TTL: %v\n", err)
+	}
+
+	response, err := dynadotClient.SetDNSRecords(domain, newRecords)
+	if err != nil {
+		fmt.Printf("Error setting all DNS records: %v\n", err)
+	}
+
+	
+	fmt.Printf("Set All Response Message: %s\n", response.Message)
+
+	
 	return nil
 }
 
@@ -196,19 +246,6 @@ func addTXTRecord(c *DynadotClient, domain, subDomain, target string) error{
 	}
 
 	
-	fmt.Printf("Response Code: %s\n", response.Code)
-	fmt.Printf("Response Message: %s\n", response.Message)
+	fmt.Printf("Add TXT Response Message: %s\n", response.Message)
 	return nil
 }
-
-func GetDNSRecords(c *DynadotClient, key string, domain, subDomain, target string) error{
-	dnsRecords, err := c.GetDNSRecords(domain)
-	if err != nil {
-		fmt.Printf("Error getting DNS records: %v\n", err)
-		return nil
-	}
-	
-	fmt.Printf("Message: %s\n", dnsRecords.Message)
-	return nil
-}
-

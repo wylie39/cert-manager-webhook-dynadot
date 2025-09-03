@@ -27,12 +27,26 @@ type MainDNSRecord struct {
 	RecordValue2 string `json:"record_value2,omitempty"`
 }
 
+type MainDNSRecordWithValue struct {
+	RecordType   string `json:"record_type"`
+	RecordValue1 string `json:"value"`
+	RecordValue2 string `json:"value2,omitempty"`
+}
+
+
 // SubDNSRecord represents a sub DNS record
 type SubDNSRecord struct {
 	SubHost      string `json:"sub_host,omitempty"`
 	RecordType   string `json:"record_type,omitempty"`
 	RecordValue1 string `json:"record_value1,omitempty"`
 	RecordValue2 string `json:"record_value2,omitempty"`
+}
+
+type SubDNSRecordWithValue struct {
+	SubHost      string `json:"sub_host,omitempty"`
+	RecordType   string `json:"record_type,omitempty"`
+	RecordValue1 string `json:"value,omitempty"`
+	RecordValue2 string `json:"value2,omitempty"`
 }
 
 // SetDNSRequest represents the request body for SET_DNS command
@@ -45,16 +59,27 @@ type SetDNSRequest struct {
 
 // SetDNSResponse represents the API response for SET_DNS command
 type SetDNSResponse struct {
-	Code    string    `json:"code"`
+	Code    any  `json:"code"`
 	Message string `json:"message"`
 }
 
+
+type GetDNSRecordsTypes struct {
+	Main_domains []MainDNSRecordWithValue `json:"main_domains,omitempty"` 
+	Sub_domains []SubDNSRecordWithValue `json:"sub_domains,omitempty"` 
+	TTL string `json:"ttl,omitempty"`
+}
+
+
+type GetDNSRecordsResponse struct {
+	Name_server_settings GetDNSRecordsTypes `json:"name_server_settings,omitempty"` 
+}
 
 // DNSResponse represents the API response for DNS operations
 type DNSResponse struct {
 	Success bool        `json:"success"`
 	Message string      `json:"message,omitempty"`
-	Data    any `json:"data,omitempty"`
+	Data    GetDNSRecordsResponse `json:"data,omitempty"`
 }
 
 // NewDynadotClient creates a new Dynadot API client
@@ -134,7 +159,7 @@ func (c *DynadotClient) GetDNSRecords(domain string) (*DNSResponse, error) {
 	}
 	defer resp.Body.Close()
 	
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)	
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -162,7 +187,7 @@ func (c *DynadotClient) SetDNSRecords(domain string, request SetDNSRequest) (*Se
 	defer resp.Body.Close()
 	
 	body, err := io.ReadAll(resp.Body)
-	println(string(body))
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -177,6 +202,35 @@ func (c *DynadotClient) SetDNSRecords(domain string, request SetDNSRequest) (*Se
 	}
 	
 	return &setDNSResponse, nil
+}
+
+func ConvertSubDNSRecords(records []SubDNSRecordWithValue) []SubDNSRecord {
+    result := make([]SubDNSRecord, len(records))
+    
+    for i, record := range records {
+        result[i] = SubDNSRecord{
+            SubHost:      record.SubHost,
+            RecordType:   record.RecordType,
+            RecordValue1: record.RecordValue1,
+            RecordValue2: record.RecordValue2,
+        }
+    }
+    
+    return result
+}
+
+func ConvertMainDNSRecords(records []MainDNSRecordWithValue) []MainDNSRecord {
+    result := make([]MainDNSRecord, len(records))
+    
+    for i, record := range records {
+        result[i] = MainDNSRecord{
+            RecordType:   record.RecordType,
+            RecordValue1: record.RecordValue1,
+            RecordValue2: record.RecordValue2,
+        }
+    }
+    
+    return result
 }
 
 
