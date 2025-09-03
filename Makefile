@@ -2,7 +2,7 @@ GO ?= $(shell which go)
 OS ?= $(shell $(GO) env GOOS)
 ARCH ?= $(shell $(GO) env GOARCH)
 
-IMAGE_NAME := "webhook"
+IMAGE_NAME := "cert-manager-webhook-dynadot"
 IMAGE_TAG := "latest"
 
 OUT := $(shell pwd)/_out
@@ -36,7 +36,7 @@ rendered-manifest.yaml: $(OUT)/rendered-manifest.yaml
 
 $(OUT)/rendered-manifest.yaml: $(HELM_FILES) | $(OUT)
 	helm template \
-	    --name cert-manager-webhook-dynadot\
+			cert-manager-webhook-dynadot\
             --set image.repository=$(IMAGE_NAME) \
             --set image.tag=$(IMAGE_TAG) \
             deploy/cert-manager-webhook-dynadot > $@
