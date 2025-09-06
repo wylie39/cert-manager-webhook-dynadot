@@ -58,9 +58,10 @@ type dynadotSolver struct {
 // You should not include sensitive information here. If credentials need to
 // be used by your provider here, you should reference a Kubernetes Secret
 // resource and fetch these credentials using a Kubernetes clientset.
-type customDNSProviderConfig struct {
-	ApiKeyRef corev1.SecretKeySelector `json:"apiKeyRef"`
-	ApplicationSecretRef corev1.SecretKeySelector `json:"applicationSecretRef"`
+type dynadotProviderConfig struct {
+	APIKeySecretRef corev1.SecretKeySelector `json:"apiKeySecretRef"`
+	APIKey    string `json:"ApiKey"`
+	APISecret string `json:"ApiSecret"`
 }
 
 // Name is used as the name for this DNS solver when referencing it on the ACME
@@ -74,23 +75,32 @@ func (c *dynadotSolver) Name() string {
 }
 
 
-
-func (s *dynadotSolver) secret(ref corev1.SecretKeySelector, namespace string) (string, error) {
-	if ref.Name == "" {
-		return "", nil
-	}
-
-	secret, err := s.client.CoreV1().Secrets(namespace).Get(context.TODO(), ref.Name, metav1.GetOptions{})
+func (c *dynadotSolver) getApiToken(cfg *dynadotProviderConfig, ch *v1alpha1.ChallengeRequest) error {
+	sec, err := c.client.CoreV1().
+		Secrets(ch.ResourceNamespace).
+		Get(context.TODO(), cfg.APIKeySecretRef.LocalObjectReference.Name, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	bytes, ok := secret.Data[ref.Key]
+	secBytes, ok := sec.Data[cfg.APIKeySecretRef.Key]
 	if !ok {
-		return "", fmt.Errorf("key not found %q in secret '%s/%s'", ref.Key, namespace, ref.Name)
+		return fmt.Errorf("key %q not found in secret \"%s/%s\"",
+			cfg.APIKeySecretRef.Key,
+			cfg.APIKeySecretRef.LocalObjectReference.Name,
+			ch.ResourceNamespace)
 	}
-	return string(bytes), nil
+
+	token := strings.Split(string(secBytes), ":")
+	cfg.APIKey = token[0]
+	cfg.APISecret = token[1]
+
+	return nil
 }
+
+
+
+
 
 
 func (s *dynadotSolver) dynadotClient(ch *v1alpha1.ChallengeRequest) (*DynadotClient, error) {
@@ -99,17 +109,12 @@ func (s *dynadotSolver) dynadotClient(ch *v1alpha1.ChallengeRequest) (*DynadotCl
 		return nil, err
 	}
 
-	applicationSecret, err := s.secret(cfg.ApplicationSecretRef, ch.ResourceNamespace)
+	err = s.getApiToken(&cfg,ch)
 	if err != nil {
 		return nil, err
 	}
 
-	apiKey, err := s.secret(cfg.ApiKeyRef, ch.ResourceNamespace)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewDynadotClient(applicationSecret,apiKey), nil
+	return NewDynadotClient(&cfg), nil
 }
 
 // Present is responsible for actually presenting the DNS record with the
@@ -122,7 +127,7 @@ func (c *dynadotSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 	if err != nil {
 		return err
 	}
-	domain := util.UnFqdn(ch.ResolvedZone)
+	domain := findDomainName(ch.ResolvedZone)
 	subDomain := getSubDomain(domain, ch.ResolvedFQDN)
 	target := ch.Key
 
@@ -143,9 +148,7 @@ func (s *dynadotSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	if err != nil {
 		return err
 	}
-	domain := util.UnFqdn(ch.ResolvedZone)
-	//subDomain := getSubDomain(domain, ch.ResolvedFQDN)
-	//target := ch.Key
+	domain := findDomainName(ch.ResolvedZone)
 	dnsResponse, err := dynadotClient.GetDNSRecords(domain)
 	if err != nil {
 		fmt.Printf("Error getting DNS records: %v\n", err)
@@ -207,8 +210,8 @@ func (s *dynadotSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan 
 
 // loadConfig is a small helper function that decodes JSON configuration into
 // the typed config struct.
-func loadConfig(cfgJSON *extapi.JSON) (customDNSProviderConfig, error) {
-	cfg := customDNSProviderConfig{}
+func loadConfig(cfgJSON *extapi.JSON) (dynadotProviderConfig, error) {
+	cfg := dynadotProviderConfig{}
 	// handle the 'base case' where no configuration has been provided
 	if cfgJSON == nil {
 		return cfg, nil
@@ -239,7 +242,7 @@ func addTXTRecord(c *DynadotClient, domain, subDomain, target string) error{
 				RecordValue1: target,
 			},
 		},
-		TTL:                    300,
+		TTL:                    100,
 		AddDNSToCurrentSetting: true,
 	}
 	
@@ -251,4 +254,14 @@ func addTXTRecord(c *DynadotClient, domain, subDomain, target string) error{
 	
 	fmt.Printf("Add TXT Response Message: %s\n", response.Message)
 	return nil
+}
+
+func findDomainName(zone string) string {
+	authZone, err := util.FindZoneByFqdn(context.TODO(),zone, util.RecursiveNameservers)
+	if err != nil {
+		fmt.Printf("could not get zone by fqdn %v", err)
+		return zone
+	}
+	fmt.Printf("Found Domain: %s\n", authZone)
+	return util.UnFqdn(authZone)
 }

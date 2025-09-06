@@ -1,10 +1,6 @@
 {
-    "applicationSecretRef": {
+    "apiKeySecretRef": {
         "Name": "dynadot-credentials",
-        "Key": "applicationSecret"
-    },
-    "apiKeyRef": {
-        "Name": "dynadot-credentials",
-        "Key": "apiKey"
+        "Key": "token"
     }
 }

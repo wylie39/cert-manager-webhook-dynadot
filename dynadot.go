@@ -83,10 +83,10 @@ type DNSResponse struct {
 }
 
 // NewDynadotClient creates a new Dynadot API client
-func NewDynadotClient(secretKey string, apiKey string) *DynadotClient {
+func NewDynadotClient(ch *dynadotProviderConfig) *DynadotClient {
 	return &DynadotClient{
-		ApiKey: apiKey,
-		SecretKey: secretKey,
+		ApiKey: ch.APIKey,
+		SecretKey: ch.APIKey,
 		BaseURL:   "https://api.dynadot.com/restful",
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
