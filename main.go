@@ -75,10 +75,10 @@ func (c *dynadotSolver) Name() string {
 }
 
 
-func (c *dynadotSolver) getApiToken(cfg *dynadotProviderConfig, ch *v1alpha1.ChallengeRequest) error {
-	sec, err := c.client.CoreV1().
+func (s *dynadotSolver) getApiToken(cfg *dynadotProviderConfig, ch *v1alpha1.ChallengeRequest) error {
+	sec, err := s.client.CoreV1().
 		Secrets(ch.ResourceNamespace).
-		Get(context.TODO(), cfg.APIKeySecretRef.LocalObjectReference.Name, metav1.GetOptions{})
+		Get(context.TODO(), cfg.APIKeySecretRef.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (c *dynadotSolver) getApiToken(cfg *dynadotProviderConfig, ch *v1alpha1.Cha
 	if !ok {
 		return fmt.Errorf("key %q not found in secret \"%s/%s\"",
 			cfg.APIKeySecretRef.Key,
-			cfg.APIKeySecretRef.LocalObjectReference.Name,
+			cfg.APIKeySecretRef.Name,
 			ch.ResourceNamespace)
 	}
 
