@@ -70,7 +70,7 @@ type customDNSProviderConfig struct {
 // within a single webhook deployment**.
 // For example, `cloudflare` may be used as the name of a solver.
 func (c *dynadotSolver) Name() string {
-	return "dynadot-solver"
+	return "dynadot"
 }
 
 
@@ -126,6 +126,9 @@ func (c *dynadotSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 	subDomain := getSubDomain(domain, ch.ResolvedFQDN)
 	target := ch.Key
 
+	fmt.Printf("Got new challenge: %s\n", ch.ResolvedFQDN)
+
+
 	return addTXTRecord(dynadotClient, domain, subDomain, target)
 }
 
@@ -157,7 +160,7 @@ func (s *dynadotSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
         record := dnsRecords.Name_server_settings.Sub_domains[readIndex]
         
         // Check if this record should be kept (doesn't match the criteria)
-        if  record.RecordValue1 != "123d==" {
+        if  record.RecordValue1 != ch.Key {
             dnsRecords.Name_server_settings.Sub_domains[writeIndex] = record
             writeIndex++
         }
