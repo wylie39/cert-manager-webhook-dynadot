@@ -13,11 +13,11 @@ env:
 
 jobs:
   build:
-    runs-on: [linux]
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: [ self-hosted, "${{ matrix.os }}" ]
         
     steps:
       - name: Prepare
