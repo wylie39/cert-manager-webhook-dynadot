@@ -1,5 +1,5 @@
 apiVersion: v1
-appVersion: "1.0"
+appVersion: "0.1.0"
 description: Allow cert-manager to solve DNS challenges using Dynadot DNS API
 home: https://github.com/wylie39/cert-manager-webhook-dynadot
 name: cert-manager-webhook-dynadot
