@@ -1,6 +1,0 @@
-{
-    "apiKeySecretRef": {
-        "Name": "dynadot-credentials",
-        "Key": "token"
-    }
-}
