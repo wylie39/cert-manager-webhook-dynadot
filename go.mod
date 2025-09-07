@@ -1,6 +1,6 @@
 module github.com/wylie39/cert-manager-webhook-dynadot
 
-go 1.23.0
+go 1.25.0
 
 require (
 	github.com/cert-manager/cert-manager v1.15.4
