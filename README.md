@@ -6,8 +6,11 @@ This is a webhook solver for Dynadot
 Install cert-manager. You can find more info [here](https://cert-manager.io/docs/installation/)
 
 ## Install Webhook
-The helm chart has not been published yet, so you have to clone this repo
-Then run:  
+To install the chart:  
+`helm repo add cert-manager-webhook-dynadot https://wylie39.github.io/cert-manager-webhook-dynadot`  
+`helm install --namespace cert-manager cert-manager-webhook-dynadot cert-manager-webhook-dynadot/cert-manager-webhook-dynadot`
+
+Or to use it from a local copy of the repo  
 `helm install --namespace cert-manager cert-manager-webhook-dynadot deploy/cert-manager-webhook-dynadot/`
 
 ## Create Issuer
