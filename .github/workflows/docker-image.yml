@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -13,6 +15,17 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            wylie39/cert-manager-webhook-dynadot
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
         
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -33,4 +46,5 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
-          tags: wylie39/cert-manager-webhook-dynadot:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
