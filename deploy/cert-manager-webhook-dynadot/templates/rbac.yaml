@@ -53,6 +53,39 @@ subjects:
     name: {{ include "cert-manager-webhook-dynadot.fullname" . }}
     namespace: {{ .Release.Namespace }}
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "cert-manager-webhook-dynadot.fullname" . }}:secret-reader
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "secrets"
+    {{- with .Values.secretName }}
+    resourceNames:
+    {{ toYaml . | indent 4 }}
+    {{- end }}
+    verbs:
+      - "get"
+      - "watch"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "cert-manager-webhook-dynadot.fullname" . }}:secret-reader
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "cert-manager-webhook-dynadot.fullname" . }}:secret-reader
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "cert-manager-webhook-dynadot.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+---
 # Grant cert-manager permission to validate using our apiserver
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
