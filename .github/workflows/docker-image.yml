@@ -98,12 +98,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY_IMAGE }}
           flavor: |
-            prefix=cert-manager-webhook-dynadot-
+            prefix=cert-manager-webhook-dynadot-,onlatest=true
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{raw}}
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
