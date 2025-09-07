@@ -97,6 +97,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          flavor: |
+            prefix=cert-manager-webhook-dynadot-
           tags: |
             type=ref,event=branch
             type=ref,event=pr
