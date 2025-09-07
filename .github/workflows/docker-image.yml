@@ -97,11 +97,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
-          flavor: |
-            prefix=cert-manager-webhook-dynadot-,onlatest=true
           tags: |
             type=ref,event=branch
-            type=semver,pattern={{raw}}
+            type=match,pattern=.*-(\d+\.\d+\.\d+.*),group=1
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
