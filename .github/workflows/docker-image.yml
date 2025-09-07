@@ -24,6 +24,7 @@ jobs:
             wylie39/cert-manager-webhook-dynadot
           tags: |
             type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
         
