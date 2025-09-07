@@ -28,4 +28,4 @@ jobs:
         with:
           charts_dir: deploy 
         env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          CR_TOKEN: "${{ secrets.PAT }}"
