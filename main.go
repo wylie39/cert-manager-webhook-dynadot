@@ -60,8 +60,8 @@ type dynadotSolver struct {
 // resource and fetch these credentials using a Kubernetes clientset.
 type dynadotProviderConfig struct {
 	APIKeySecretRef corev1.SecretKeySelector `json:"apiKeySecretRef"`
-	APIKey    string `json:"ApiKey"`
-	APISecret string `json:"ApiSecret"`
+	APIKey          string                   `json:"ApiKey"`
+	APISecret       string                   `json:"ApiSecret"`
 }
 
 // Name is used as the name for this DNS solver when referencing it on the ACME
@@ -73,7 +73,6 @@ type dynadotProviderConfig struct {
 func (c *dynadotSolver) Name() string {
 	return "dynadot"
 }
-
 
 func (s *dynadotSolver) getApiToken(cfg *dynadotProviderConfig, ch *v1alpha1.ChallengeRequest) error {
 	sec, err := s.client.CoreV1().
@@ -98,18 +97,13 @@ func (s *dynadotSolver) getApiToken(cfg *dynadotProviderConfig, ch *v1alpha1.Cha
 	return nil
 }
 
-
-
-
-
-
 func (s *dynadotSolver) dynadotClient(ch *v1alpha1.ChallengeRequest) (*DynadotClient, error) {
 	cfg, err := loadConfig(ch.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.getApiToken(&cfg,ch)
+	err = s.getApiToken(&cfg, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +126,6 @@ func (c *dynadotSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 	target := ch.Key
 
 	fmt.Printf("Got new challenge: %s\n", ch.ResolvedFQDN)
-
 
 	return addTXTRecord(dynadotClient, domain, subDomain, target)
 }
@@ -158,21 +151,21 @@ func (s *dynadotSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	dnsRecords := dnsResponse.Data
 	var newRecords SetDNSRequest
 	writeIndex := 0
-    
-    for readIndex := 0; readIndex < len(dnsRecords.Name_server_settings.Sub_domains); readIndex++ {
-        record := dnsRecords.Name_server_settings.Sub_domains[readIndex]
-        
-        // Check if this record should be kept (doesn't match the criteria)
-        if  record.RecordValue1 != ch.Key {
-            dnsRecords.Name_server_settings.Sub_domains[writeIndex] = record
-            writeIndex++
-        }
-    }
-    
-    // Truncate the slice to remove filtered elements
+
+	for readIndex := 0; readIndex < len(dnsRecords.Name_server_settings.Sub_domains); readIndex++ {
+		record := dnsRecords.Name_server_settings.Sub_domains[readIndex]
+
+		// Check if this record should be kept (doesn't match the criteria)
+		if record.RecordValue1 != ch.Key {
+			dnsRecords.Name_server_settings.Sub_domains[writeIndex] = record
+			writeIndex++
+		}
+	}
+
+	// Truncate the slice to remove filtered elements
 	newRecords.DNSMainList = ConvertMainDNSRecords(dnsRecords.Name_server_settings.Main_domains)
-    newRecords.SubList = ConvertSubDNSRecords(dnsRecords.Name_server_settings.Sub_domains[:writeIndex])
-	newRecords.TTL ,err = strconv.ParseInt(dnsRecords.Name_server_settings.TTL,10,64)
+	newRecords.SubList = ConvertSubDNSRecords(dnsRecords.Name_server_settings.Sub_domains[:writeIndex])
+	newRecords.TTL, err = strconv.ParseInt(dnsRecords.Name_server_settings.TTL, 10, 64)
 	if err != nil {
 		fmt.Printf("Error parse TTL: %v\n", err)
 	}
@@ -182,10 +175,8 @@ func (s *dynadotSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 		fmt.Printf("Error setting all DNS records: %v\n", err)
 	}
 
-	
 	fmt.Printf("Set All Response Message: %s\n", response.Message)
 
-	
 	return nil
 }
 
@@ -231,8 +222,7 @@ func getSubDomain(domain, fqdn string) string {
 	return util.UnFqdn(fqdn)
 }
 
-
-func addTXTRecord(c *DynadotClient, domain, subDomain, target string) error{
+func addTXTRecord(c *DynadotClient, domain, subDomain, target string) error {
 	setDNSRequest := SetDNSRequest{
 		DNSMainList: []MainDNSRecord{},
 		SubList: []SubDNSRecord{
@@ -245,19 +235,18 @@ func addTXTRecord(c *DynadotClient, domain, subDomain, target string) error{
 		TTL:                    100,
 		AddDNSToCurrentSetting: true,
 	}
-	
+
 	response, err := c.SetDNSRecords(domain, setDNSRequest)
 	if err != nil {
 		fmt.Printf("Error setting DNS records: %v\n", err)
 	}
 
-	
 	fmt.Printf("Add TXT Response Message: %s\n", response.Message)
 	return nil
 }
 
 func findDomainName(zone string) string {
-	authZone, err := util.FindZoneByFqdn(context.TODO(),zone, util.RecursiveNameservers)
+	authZone, err := util.FindZoneByFqdn(context.TODO(), zone, util.RecursiveNameservers)
 	if err != nil {
 		fmt.Printf("could not get zone by fqdn %v", err)
 		return zone
