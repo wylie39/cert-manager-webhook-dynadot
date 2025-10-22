@@ -2,6 +2,24 @@ apiVersion: v1
 entries:
   cert-manager-webhook-dynadot:
   - apiVersion: v1
+    appVersion: 0.1.1
+    created: "2025-10-22T01:50:47.138060947Z"
+    description: Allow cert-manager to solve DNS challenges using Dynadot DNS API
+    digest: cec7b9eda8eaa87b8deff84aa1d515d7ac87174166f5f7a66b7361ca77fdcb88
+    home: https://github.com/wylie39/cert-manager-webhook-dynadot
+    icon: https://raw.githubusercontent.com/cert-manager/cert-manager/master/logo/logo-small.png
+    keywords:
+    - cert-manager
+    - dynadot
+    - letsencrypt
+    - tls
+    name: cert-manager-webhook-dynadot
+    sources:
+    - https://github.com/wylie39/cert-manager-webhook-dynadot
+    urls:
+    - https://github.com/wylie39/cert-manager-webhook-dynadot/releases/download/cert-manager-webhook-dynadot-0.1.1/cert-manager-webhook-dynadot-0.1.1.tgz
+    version: 0.1.1
+  - apiVersion: v1
     appVersion: 0.1.0
     created: "2025-09-07T04:21:03.355175176Z"
     description: Allow cert-manager to solve DNS challenges using Dynadot DNS API
@@ -19,4 +37,4 @@ entries:
     urls:
     - https://github.com/wylie39/cert-manager-webhook-dynadot/releases/download/cert-manager-webhook-dynadot-0.1.0/cert-manager-webhook-dynadot-0.1.0.tgz
     version: 0.1.0
-generated: "2025-09-07T04:21:03.355181308Z"
+generated: "2025-10-22T01:50:47.138069333Z"
